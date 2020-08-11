@@ -1,0 +1,52 @@
+@startuml
+
+package "Confluent.Kafka" {
+    [IConsumer]
+    [IProducer]
+}
+
+package "Common.Kafka" {
+  [KafkaMessageConsumerManager]
+  [KafkaTopicMessageConsumer]
+  [KafkaMessageProducer]
+}
+
+package "MediatR" {
+    [Mediator]
+}
+
+package "ConsumerWorker" {
+    [Worker] as ConsumerWorker.Worker
+    [SampleMessageLoggerHandler]
+    [OtherSampleMessageLoggerHandler]
+    [AnotherSampleMessageLoggerHandler]
+}
+
+package "ProducerWorker" {
+    [Worker] as ProducerWorker.Worker
+}
+
+package "ProducerWorker.Messages" {
+    [SampleMessage]
+    [OtherSampleMessage]
+    [AnotherSampleMessage]
+}
+
+[ProducerWorker.Worker] --> [KafkaMessageProducer] : ProduceAsync(key, message)
+[KafkaMessageProducer] --> [IProducer] : ProduceAsync(topic, message)
+
+[ConsumerWorker.Worker] --> [KafkaMessageConsumerManager] : StartConsumers
+[KafkaMessageConsumerManager] --> [KafkaTopicMessageConsumer] : StartConsuming
+[KafkaTopicMessageConsumer] --> [IConsumer] : Subscribe(topic)
+[KafkaTopicMessageConsumer] --> [IConsumer] : Consume()
+[KafkaTopicMessageConsumer] --> [Mediator] : Publish(consumedMessage)
+
+[Mediator] --> [SampleMessageLoggerHandler] : Handle(SampleMessage)
+[Mediator] --> [OtherSampleMessageLoggerHandler] : Handle(OtherSampleMessage)
+[Mediator] --> [AnotherSampleMessageLoggerHandler] : Handle(AnotherSampleMessage)
+
+[SampleMessageLoggerHandler] ..> [SampleMessage] : Handles
+[OtherSampleMessageLoggerHandler] ..> [OtherSampleMessage] : Handles
+[AnotherSampleMessageLoggerHandler] ..> [AnotherSampleMessage] : Handles
+
+@enduml

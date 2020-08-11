@@ -25,124 +25,13 @@ The approach enables the consumer to be built using a vertical slice architectur
 
 ### Describe solution architecture
 
-```plantuml
-@startuml
+#### Container Diagram
 
-package "Confluent.Kafka" {
-    [IConsumer]
-    [IProducer]
-}
+![Container Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/container-diagram.txt)
 
-package "Common.Kafka" {
-  [KafkaMessageConsumerManager]
-  [KafkaTopicMessageConsumer]
-  [KafkaMessageProducer]
-}
+#### Sequence Diagram
 
-package "MediatR" {
-    [Mediator]
-}
-
-package "ConsumerWorker" {
-    [Worker] as ConsumerWorker.Worker
-    [SampleMessageLoggerHandler]
-    [OtherSampleMessageLoggerHandler]
-    [AnotherSampleMessageLoggerHandler]
-}
-
-package "ProducerWorker" {
-    [Worker] as ProducerWorker.Worker
-}
-
-package "ProducerWorker.Messages" {
-    [SampleMessage]
-    [OtherSampleMessage]
-    [AnotherSampleMessage]
-}
-
-[ProducerWorker.Worker] --> [KafkaMessageProducer] : ProduceAsync(key, message)
-[KafkaMessageProducer] --> [IProducer] : ProduceAsync(topic, message)
-
-[ConsumerWorker.Worker] --> [KafkaMessageConsumerManager] : StartConsumers
-[KafkaMessageConsumerManager] --> [KafkaTopicMessageConsumer] : StartConsuming
-[KafkaTopicMessageConsumer] --> [IConsumer] : Subscribe(topic)
-[KafkaTopicMessageConsumer] --> [IConsumer] : Consume()
-[KafkaTopicMessageConsumer] --> [Mediator] : Publish(consumedMessage)
-
-[Mediator] --> [SampleMessageLoggerHandler] : Handle(SampleMessage)
-[Mediator] --> [OtherSampleMessageLoggerHandler] : Handle(OtherSampleMessage)
-[Mediator] --> [AnotherSampleMessageLoggerHandler] : Handle(AnotherSampleMessage)
-
-[SampleMessageLoggerHandler] ..> [SampleMessage] : Handles
-[OtherSampleMessageLoggerHandler] ..> [OtherSampleMessage] : Handles
-[AnotherSampleMessageLoggerHandler] ..> [AnotherSampleMessage] : Handles
-
-@enduml
-```
-
-```plantuml
-@startuml
-    participant ConsumerWorker.Worker
-    participant KafkaMessageConsumerManager
-    participant KafkaMessageConsumerManager.ServiceProvider
-    participant KafkaTopicMessageConsumer
-    participant KafkaConsumerBuilder
-    participant IConsumer
-    participant KafkaTopicMessageConsumer.ServiceProvider
-    participant scope.ServiceProvider
-    participant Mediator
-    collections MessageNotificationHandlers
-
-    activate ConsumerWorker.Worker
-    ConsumerWorker.Worker -> KafkaMessageConsumerManager : StartConsumers(cancellationToken)
-    deactivate ConsumerWorker.Worker
-
-    activate KafkaMessageConsumerManager
-    KafkaMessageConsumerManager -> KafkaMessageConsumerManager : find all messages with notification handlers
-    KafkaMessageConsumerManager -> KafkaMessageConsumerManager : find the topics for those messages
-    loop each topic with notification handlers
-        KafkaMessageConsumerManager -> KafkaMessageConsumerManager.ServiceProvider : GetRequiredService<IKafkaTopicMessageConsumer>
-        KafkaMessageConsumerManager <-- KafkaMessageConsumerManager.ServiceProvider : kafkaTopicMessageConsumer
-        group new thread
-            KafkaMessageConsumerManager -> KafkaTopicMessageConsumer : StartConsuming(topic, cancellationToken)
-            deactivate KafkaMessageConsumerManager
-
-            activate KafkaTopicMessageConsumer
-            KafkaTopicMessageConsumer -> KafkaConsumerBuilder : build()
-
-            activate KafkaConsumerBuilder
-            KafkaTopicMessageConsumer <-- KafkaConsumerBuilder : consumer
-            deactivate KafkaConsumerBuilder
-
-            KafkaTopicMessageConsumer -> IConsumer : subscribe(topic)
-            activate IConsumer
-            loop while no cancellation requested on cancellationToken
-                KafkaTopicMessageConsumer -> IConsumer : consume(cancellationToken)
-                KafkaTopicMessageConsumer <-- IConsumer : consumeResult
-                deactivate IConsumer
-
-                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer : determine message type
-                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer : use reflection to build MessageNotification
-
-                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer.ServiceProvider : CreateScope()
-                activate KafkaTopicMessageConsumer.ServiceProvider
-                KafkaTopicMessageConsumer <-- KafkaTopicMessageConsumer.ServiceProvider : scope
-                KafkaTopicMessageConsumer -> scope.ServiceProvider : GetRequiredService<IMediator>
-                KafkaTopicMessageConsumer <-- scope.ServiceProvider : mediator
-                deactivate KafkaTopicMessageConsumer.ServiceProvider
-
-                KafkaTopicMessageConsumer -> Mediator : send(messageNotification, cancellationToken)
-                activate Mediator
-                Mediator -> MessageNotificationHandlers : handle(messageNotification, cancellationToken)
-                activate MessageNotificationHandlers
-                deactivate MessageNotificationHandlers
-                deactivate Mediator
-            end
-        end
-        deactivate KafkaTopicMessageConsumer
-    end
-@enduml
-```
+![Sequence Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/sequence-diagram.txt)
 
 ## The Solution - The Consumer
 
