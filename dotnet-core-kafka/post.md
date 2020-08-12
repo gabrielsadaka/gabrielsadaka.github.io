@@ -1,4 +1,4 @@
-# Vertically Slice Event Driven Architecture with .NET Core and Kafka
+# Vertical Slice Event Driven Architecture with .NET Core and Kafka
 
 ## Introduction
 
