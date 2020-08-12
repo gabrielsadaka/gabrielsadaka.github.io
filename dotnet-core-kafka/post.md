@@ -1,39 +1,34 @@
-# Vertically sliced Event Driven Architecture with .NET Core and Kafka
+# Vertically Slice Event Driven Architecture with .NET Core and Kafka
 
-## Purpose/Goal/Feeling/Scope
+## Introduction
 
-- Who is this for?
-- Why write this?
+Writing software using event driven architecture enables high scalability, fault tolerance and flexibility by decoupling services. It does introduce significant complexity into the system though as workflows that could have been contained within a single system could now involve multiple services to achieve a similar outcome. The system used to stream the events between individual components also needs to be considered when building each of these components. The approach that will be outlined in this post will enable developers to write the business logic that reacts to events without needing to actively consider message transport specific concerns. This enables the developer to choose what they want to focus on based on the work they are currently doing. It is not intended to remove all considerations of the message transport from developers writing event driven systems.
 
-As a developer I want to write business logic that reacts to events without needing to actively consider message transport specific concerns. This is not intended to remove all considerations of Kafka from developers writing event driven systems. The purpose is to enable the developer to choose what they want to focus on based on the work they are currently doing. It also allows the business logic to be tested in isolation from the messaging concerns through the clear separation of concerns.
+When building event driven systems multiple services can react to a single event with each service focusing on its own specific requirements utilizing the infrastructure it owns. For example when a customer registers an account, one service may record the customer details in its own datastore, while another may send out an email to welcome the customer. The two services involved in this business process handle separate concerns using different infrastructure to process the event. What is common between them though is that they both react to the same event. Since this is a common concern between the two services, handling this aspect consistently is important to ensure it is done correctly and to allow the developers of each service to not have to consider the needs of processing events when writing business logic that reacts to them.
 
-## Intro
-
-### A paragraph about EDA in intro?
-
-When building event driven systems multiple services can react to a single event with each service focusing on its own specific requirements utilizing the infrastructure it owns. For example when a customer registers for an account, one service may record the customer details in its own datastore, while another may send out an email to welcome the customer. The two services involved in this business process handle separate concerns using different infrastructure to process the event. What is common between them though is that they both react to the same event. Since this is a common concern between the two services, handling this aspect consistently is important to ensure it is done correctly and to allow the developers of each service to not have to consider the needs of processing events when writing business logic that reacts to them.
-
-In this post I will present an approach to standardizing the processing of events consumed from Kafka in .NET applications. The solution proposed does not cover complex event streaming applications, it is designed to support applications that receive events one at a time in order and then perform particular actions as reactions to that event.
+In this post I will present an approach to standardizing the processing of events consumed from Kafka in .NET applications. The solution proposed does not cover complex event streaming applications, instead it is designed to support applications that receive events one at a time in order and then perform particular actions as reactions to that event.
 
 It will be built as a shared library to ensure that both the producer and the consumer uses a consistent approach to publishing and consuming messages. Providing a shared library within an organisation that gives developers a consistent approach to react to events allows all of the cross cutting concerns to be handled consistently. It also improves developer productivity by allowing them to focus on the business logic required to handle that particular event. It also enables the reactions to the events to be handled independently making it easier to unit test, therefore increasing confidence in the quality of the code.
 
-It makes adding new reactions to events straightforward, due to the consistent approach, independence of event handlers and automatic registration of the handlers. By automatically registering the handlers of events it allows a developer to focus purely on the code that will be reacting to the event without having to focus on the concerns of consuming that event. It makes it easier to add more services that listen to events and to also add more reactions within a given service for particular events.
+Adding new reactions to events then becomes straightforward, due to the consistent approach, independence of event handlers and automatic registration of the handlers. By automatically registering the handlers of events it allows a developer to focus purely on the code that will be reacting to the event without having to focus on the concerns of consuming that event. It makes it easier to add more services that listen to events and to also add more reactions within a given service for particular events.
 
 The approach enables the consumer to be built using a vertical slice architecture where each event is handled by an independent handler with it's own dependencies injected within an isolated scope. This makes it easier to adopt a CQRS approach and the ability to test the handling of each event in isolation. Similar to ASP.NET Core where all HTTP requests are executed within their own dependency injection scope, each event will be processed within their own scope to ensure nothing is shared between events.
 
-## Content
+## Architecture
 
-### Describe solution architecture
+### Container Diagram
 
-#### Container Diagram
+The container diagram below outlines the various components that form the proposed solution and how they interact with each other.
 
 ![Container Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/container-diagram.txt)
 
-#### Sequence Diagram
+### Message Consumer Sequence Diagram
+
+The sequence diagram below outlines the interactions between the objects within the consumer.
 
 ![Sequence Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/sequence-diagram.txt)
 
-## The Solution - The Consumer
+## Message Consumer
 
 In the proposed solution to consume a message that is published to a Kafka topic a `MediatR.INotificationHandler<TNotification>` will be needed that subscribes to a `MessageNotification<TMessage>` type where `TMessage` is the concrete type of the message to be consumed. This handler will be automatically found and registered with a matching Kafka consumer that will listen to the topic it is published to.
 
@@ -201,7 +196,7 @@ public void StartConsuming(string topic, CancellationToken cancellationToken)
 }
 ```
 
-## The Solution - The Producer
+## Message Producer
 
 The `KafkaMessageProducer` class in the proposed solution is a simple singleton class that takes the instance of the message to be published, determines the topic it will be published to, serializes it then publishes it to the Kafka topic. It is responsible for ensuring a single instance of the Kafka producer is built using the Lazy pattern as it is expensive to build them and it is safe to use a single shared instance for the lifetime of the application.
 
