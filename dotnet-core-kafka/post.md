@@ -20,13 +20,13 @@ The approach enables the consumer to be built using a vertical slice architectur
 
 The container diagram below outlines the various components that form the proposed solution and how they interact with each other.
 
-![Container Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/container-diagram.txt)
+[![Container Diagram](container-diagram.svg)](container-diagram.svg)
 
 ### Message Consumer Sequence Diagram
 
 The sequence diagram below outlines the interactions between the objects within the consumer.
 
-![Sequence Diagram](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.github.com/gabrielsadaka/gabrielsadaka.github.io/master/dotnet-core-kafka/sequence-diagram.txt)
+[![Sequence Diagram](sequence-diagram.svg)](sequence-diagram.svg)
 
 ## Message Consumer
 
