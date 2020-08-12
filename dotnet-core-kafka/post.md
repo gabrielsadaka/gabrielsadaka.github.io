@@ -265,7 +265,7 @@ public static IHostBuilder CreateHostBuilder(string[] args)
 }
 ```
 
-There is a .NET Core worker for the Producer which leverages the shared DI setup from the `Common.Kafka` library. It publishes 3 separate messages, two of which that are published to the same topic every second. This shows that multiple message types can be published to the same topic while being consumed be independent handlers.
+There is a .NET Core worker for the Producer which leverages the shared DI setup from the `Common.Kafka` library. It publishes 3 separate messages, two of which are published to the same topic every second. This shows that multiple message types can be published to the same topic while being consumed by independent handlers.
 
 ```csharp
 public static IHostBuilder CreateHostBuilder(string[] args)
