@@ -14,17 +14,9 @@ Adding new reactions to events then becomes straightforward, due to the consiste
 
 The approach enables the consumer to be built using a vertical slice architecture where each event is handled by an independent handler with it's own dependencies injected within an isolated scope. This makes it easier to adopt a CQRS approach and the ability to test the handling of each event in isolation. Similar to ASP.NET Core where all HTTP requests are executed within their own dependency injection scope, each event will be processed within their own scope to ensure nothing is shared between events.
 
-## Architecture
+## Message Consumer Sequence Diagram
 
-### Container Diagram
-
-The container diagram below outlines the various components that form the proposed solution and how they interact with each other.
-
-[![Container Diagram](container-diagram.svg)](container-diagram.svg)
-
-### Message Consumer Sequence Diagram
-
-The sequence diagram below outlines the interactions between the objects within the consumer.
+The sequence diagram below outlines the interactions between the objects within the consumer for the proposed solution.
 
 [![Sequence Diagram](sequence-diagram.svg)](sequence-diagram.svg)
 

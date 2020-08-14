@@ -1,56 +1,56 @@
 @startuml
     participant ConsumerWorker.Worker
     participant KafkaMessageConsumerManager
-    participant KafkaMessageConsumerManager.ServiceProvider
+    participant "ServiceProvider`Manager"
     participant KafkaTopicMessageConsumer
     participant KafkaConsumerBuilder
     participant IConsumer
-    participant KafkaTopicMessageConsumer.ServiceProvider
-    participant scope.ServiceProvider
+    participant "ServiceProvider`Consumer"
+    participant "ServiceProvider`Scope"
     participant Mediator
     collections MessageNotificationHandlers
 
     activate ConsumerWorker.Worker
-    ConsumerWorker.Worker -> KafkaMessageConsumerManager : StartConsumers(cancellationToken)
+    ConsumerWorker.Worker -> KafkaMessageConsumerManager : StartConsumers(ct)
     deactivate ConsumerWorker.Worker
 
     activate KafkaMessageConsumerManager
     KafkaMessageConsumerManager -> KafkaMessageConsumerManager : find all messages with notification handlers
     KafkaMessageConsumerManager -> KafkaMessageConsumerManager : find the topics for those messages
     loop each topic with notification handlers
-        KafkaMessageConsumerManager -> KafkaMessageConsumerManager.ServiceProvider : GetRequiredService<IKafkaTopicMessageConsumer>
-        KafkaMessageConsumerManager <-- KafkaMessageConsumerManager.ServiceProvider : kafkaTopicMessageConsumer
+        KafkaMessageConsumerManager -> "ServiceProvider`Manager" : GetRequiredService<IKafkaTopicMessageConsumer>()
+        KafkaMessageConsumerManager <-- "ServiceProvider`Manager" : kafkaTopicMessageConsumer
         group new thread
-            KafkaMessageConsumerManager -> KafkaTopicMessageConsumer : StartConsuming(topic, cancellationToken)
+            KafkaMessageConsumerManager -> KafkaTopicMessageConsumer : StartConsuming(topic, ct)
             deactivate KafkaMessageConsumerManager
 
             activate KafkaTopicMessageConsumer
-            KafkaTopicMessageConsumer -> KafkaConsumerBuilder : build()
+            KafkaTopicMessageConsumer -> KafkaConsumerBuilder : Build()
 
             activate KafkaConsumerBuilder
             KafkaTopicMessageConsumer <-- KafkaConsumerBuilder : consumer
             deactivate KafkaConsumerBuilder
 
-            KafkaTopicMessageConsumer -> IConsumer : subscribe(topic)
+            KafkaTopicMessageConsumer -> IConsumer : Subscribe(topic)
             activate IConsumer
             loop while no cancellation requested on cancellationToken
-                KafkaTopicMessageConsumer -> IConsumer : consume(cancellationToken)
+                KafkaTopicMessageConsumer -> IConsumer : Consume(ct)
                 KafkaTopicMessageConsumer <-- IConsumer : consumeResult
                 deactivate IConsumer
 
                 KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer : determine message type
-                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer : use reflection to build MessageNotification
+                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer : build MessageNotification
 
-                KafkaTopicMessageConsumer -> KafkaTopicMessageConsumer.ServiceProvider : CreateScope()
-                activate KafkaTopicMessageConsumer.ServiceProvider
-                KafkaTopicMessageConsumer <-- KafkaTopicMessageConsumer.ServiceProvider : scope
-                KafkaTopicMessageConsumer -> scope.ServiceProvider : GetRequiredService<IMediator>
-                KafkaTopicMessageConsumer <-- scope.ServiceProvider : mediator
-                deactivate KafkaTopicMessageConsumer.ServiceProvider
+                KafkaTopicMessageConsumer -> "ServiceProvider`Consumer" : CreateScope()
+                activate "ServiceProvider`Consumer"
+                KafkaTopicMessageConsumer <-- "ServiceProvider`Consumer" : scope
+                KafkaTopicMessageConsumer -> "ServiceProvider`Scope" : GetRequiredService<IMediator>
+                KafkaTopicMessageConsumer <-- "ServiceProvider`Scope" : mediator
+                deactivate "ServiceProvider`Consumer"
 
-                KafkaTopicMessageConsumer -> Mediator : send(messageNotification, cancellationToken)
+                KafkaTopicMessageConsumer -> Mediator : Publish(messageNotification, ct)
                 activate Mediator
-                Mediator -> MessageNotificationHandlers : handle(messageNotification, cancellationToken)
+                Mediator -> MessageNotificationHandlers : Handle(messageNotification, ct)
                 activate MessageNotificationHandlers
                 deactivate MessageNotificationHandlers
                 deactivate Mediator
