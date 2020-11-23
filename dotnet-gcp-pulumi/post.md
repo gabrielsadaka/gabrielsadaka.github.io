@@ -20,9 +20,9 @@ The principle of least privilege has been followed to ensure that the account th
 
 ### The Build Pipeline
 
-Although the code is hosted on GitHub and uses GitHub actions to automate the building and deployment, it makes use of very little GitHub actions specific functionality. Instead it uses Batect to what happens at each step, enabling the developer to validate that it will all work locally before pushing the code and waiting to see if it will succeed. It also ensures that the tasks can be run consistently on any machine with very little setup required removing the concern that arises from "doesn't run on my machine".
+Although the code is hosted on GitHub and uses GitHub actions to automate the building and deployment, it makes use of very little GitHub actions specific functionality. Instead it uses Batect to define what happens at each step, enabling the developer to validate that it will work locally before pushing the code and waiting to see if it will succeed. It also ensures that the tasks can be run consistently on any machine with very little setup required, removing the concern that arises from "doesn't run on my machine".
 
-To build the application the standard .NET Core SDK base image is defined as a container in Batect, along with the volume to map the code, the nuget cache and the `obj` folder to optimise the performance of subsequent builds by caching intermediate artefacts. A task is also defined that will use that container to build the API.
+To build the application the standard .NET Core SDK base image is defined as a container in Batect, along with volumes to map the code, the nuget cache and the `obj` folder to optimise the performance of subsequent builds by caching intermediate artefacts. A task is also defined that will use that container to build the API.
 
 ```yaml
 containers:
@@ -131,9 +131,9 @@ build-test:
 
 ### The Infrastructure
 
-Deploying the infrastructure is performed in two steps by two different GCP accounts. There is an account that has the permissions to make IAM changes and enable GCP APIs named, `iam-svc`, there are instructions in the readme of the repository to create this account. The IAM account then creates a CI account named, `ci-svc`, with only the permissions it requires to deploy the infrastructure and deploy the application to GCP Cloud Run, along with an account named, `weather-api-cloud-run`, that is the service account the Cloud Run app runs as.
+Deploying the infrastructure is performed in two steps by two different GCP accounts. There is an account that has the permissions to make IAM changes and enable GCP APIs named, `iam-svc`. The IAM account is created manually using gcloud CLI commands prior to running the first deployment of the application, there are instructions in the readme of the repository to create this account. The IAM account then creates a CI account named, `ci-svc`, with only the permissions it requires to deploy the infrastructure and deploy the application to GCP Cloud Run, along with an account named, `weather-api-cloud-run`, that is the service account the Cloud Run app runs as. The Cloud Run service account has only the permissions it needs to run the application, access the database password secret and the database itself.
 
-The deployment of the IAM changes, infrastructure and the app itself are all performed by Pulumi. The tasks performed in the GitHub Actions like the build and test are all defined as containers/tasks in Batect.
+The deployment of the IAM changes, infrastructure and the app itself are all performed by Pulumi. The tasks performed in the GitHub Actions like the build and test task are all defined as containers/tasks in Batect.
 
 ```yaml
 containers:
@@ -223,7 +223,7 @@ export const database = new gcp.sql.Database(`${config.appName}-db`, {
 
 ### The Database
 
-The database schema migrations are performed by Flyway running in Docker container, defined as a Batect container/task. The task first calls GCP Secrets Manager to retrieve the database password then connects to the Cloud SQL Postgres instance using the Cloud SQL Proxy and then performs the schema migrations.
+The database schema migrations are performed by Flyway running in a Docker container, defined as a Batect container/task. The task first calls GCP Secrets Manager to retrieve the database password then connects to the Cloud SQL Postgres instance using the Cloud SQL Proxy and then performs the schema migrations.
 
 ```yaml
 containers:
@@ -261,11 +261,11 @@ migrate-db:
       DB_PASSWORD_SECRET_VERSION: $DB_PASSWORD_SECRET_VERSION
 ```
 
-### The Deployment (Dockerfile/Batect/GitHub Actions)
+### The Deployment
 
 #### Build, scan and publish image
 
-To run the application in GCP Cloud Run a Docker image needs to be built and deployed to a container registry that is accessible by the service. I chose GCP Container Registry since it was the easiest to get working with Cloud Run. Just like the previous tasks the build, scan and publish image step is defined as a Batect container/task.
+To run the application in GCP Cloud Run a Docker image needs to be built and deployed to a container registry that is accessible by the service. I chose GCP Container Registry since it was the easiest to get working with Cloud Run. Just like the previous tasks the build, scan and publish image step is defined as a Batect container/task using the GCP SDK Alpine image.
 
 ```yaml
 containers:
@@ -346,7 +346,7 @@ deploy:
       ENVIRONMENT: $ENVIRONMENT
 ```
 
-The GCP Cloud Run service is defined to use the container port 8080, as the default port of 80 cannot be bound to be unprivileged users. It is also defined with a dependency on the GCP Cloud SQL Postgres instance, enabling it access it via the Cloud SQL Proxy. It is set to be visible to all users and is therefore public by default, this can be changed to only allow authenticated GCP users if needed.
+The GCP Cloud Run service is defined to use the container port 8080, as the default port of 80 cannot be bound to by unprivileged users. It is also defined with a dependency on the GCP Cloud SQL Postgres instance, enabling it access it via the Cloud SQL Proxy. It is set to be visible to all users and is therefore public by default, this can be changed to only allow authenticated GCP users if needed.
 
 ```typescript
 const weatherApi = new gcp.cloudrun.Service(appName, {
@@ -559,6 +559,30 @@ public async Task GetReturnsCorrectWeather()
         decimal.Parse(responseObj?.GetProperty("forecast").ToString()!, CultureInfo.InvariantCulture));
 }
 ```
+
+## What could come next?
+
+There were a number of other things that I planned to implement that would generally be required to deploy an application to production safely and ensure it continued to run correctly.
+
+Currently the application is only deployed to a single environment, ideally there should be at least one other environment that it is deployed to, ensuring it works there before deploying to production.
+
+While GCP Cloud Run aggregates the logs from the running container, it does not automatically enable distributed tracing and alerting which will be needed to ensure the application is running as expected in production.
+
+There is currently no automated linting tool used for the C# code, however ReSharper code clean up was used for each commit manually to ensure consistent formatting. The ReSharper CLI or dotnet format could be used as a pre-commit hook to automatically lint the modified code.
+
+Once the API is deployed automated functional tests can be written to ensure that it continues to function correctly in a deployed environment communicating with a real database. Automated security scanning can also be performed against the running API using tools such as OWASP ZAP, to detect any potential runtime vulnerabilities.
+
+The API allows any user to retrieve and create weather forecasts which is far from ideal and also why I manually turn off the database when I am not using it. The API should authenticate users and then ensure they are authorized to either retrieve or create weather forecasts.
+
+The database should be configured to automatically backup on a regular cadence to enable recovery of the data in the event that data is lost.
+
+The deployment pipeline takes roughly 10 minutes to build, test and deploy the application which can definitely be reduced by a number of optimisations such as; caching third party dependencies between steps and pre-building slim purpose built Docker images for each step.
+
+Although the API code and the Dockerfile currently has security scanning, the bash scripts that are used to automate the various steps don't so a tool such as Shellshock could be used to perform that scanning. The Pulumi TypeScript code also does not have any linting or security scanning.
+
+The API request don't currently perform any validation other than what is built into ASP.NET Core and could therefore use a library such as [FluentValidation](https://fluentvalidation.net/) to perform that validation to ensure the requests are as expected.
+
+I am sure there are more ways I could improve this application to make it more suitable for production workloads and I intend to continue to iterate on it, sharing my learnings as I continue down this road.
 
 ## Try it yourself
 
