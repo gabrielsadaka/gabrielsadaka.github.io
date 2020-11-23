@@ -6,11 +6,11 @@ Having never worked with GCP or [Pulumi](https://www.pulumi.com/), I thought it 
 
 ## What is it?
 
-The API is a very simple .NET Core Web API that creates and retrieves weather forecasts. The forecasts are stored in a GCP Cloud SQL Postgres database while the API is deployed as a Docker container running on GCP Cloud Run. It has tests written at every level of the test pyramid relevant to the component, starting at unit tests for the business logic, controllers and repository layer, leading to integration tests that run against a Postgres docker container.
+The API is a simple .NET Core Web API that creates and retrieves weather forecasts. The forecasts are stored in a GCP Cloud SQL Postgres database while the API is deployed as a Docker container running on GCP Cloud Run. It has tests written at every level of the test pyramid relevant to the component, starting at unit tests for the business logic, controllers and repository layer, leading to integration tests that run against a Postgres docker container.
 
 GCP Secret Manager is used to store the database password which is accessed by the .NET Core API and the database schema migration tool. The database schema migrations are applied using [Flyway](https://flywaydb.org/) running in a docker container, defined as a task in Batect. They are applied during deployment and every time the integration tests are run to ensure a clean database is available for each test run.
 
-The source code is hosted on GitHub using GitHub actions to automatically build and test the application then deploy it and it's infrastructure to GCP using Pulumi. It uses Batect to define the tasks that are run during the CI/CD pipeline to enable them to run consistently during local development and in the GitHub actions.
+The source code is hosted on GitHub using GitHub actions to automatically build and test the application then deploy it and its infrastructure to GCP using Pulumi. It uses Batect to define the tasks that are run during the CI/CD pipeline to enable them to run consistently during local development and in the GitHub actions.
 
 There are a few tools used for static analysis and for security/dependency scanning to ensure the application has no known vulnerabilities. The ASP.NET Core API uses [SonarAnalyzer.CSharp](https://www.nuget.org/packages/SonarAnalyzer.CSharp/) and [Microsoft.CodeAnalysis.FxCopAnalyzers](https://www.nuget.org/packages/Microsoft.CodeAnalysis.FxCopAnalyzers/) both of which are static analysis libraries for C# that detect code patterns that introduce security vulnerabilities or other flaws such as memory leaks. [GitHub CodeQL](https://securitylab.github.com/tools/codeql) is another static analysis tool that is used as a GitHub action. [Dependabot](https://dependabot.com/) is used for scanning the .NET dependencies to ensure they are up to date. [Trivy](https://github.com/aquasecurity/trivy) is used to scan the .NET Core Docker image for known vulnerabilities while [Dockle](https://github.com/goodwithtech/dockle) is a Dockerfile linter for detecting security flaws.
 
@@ -20,7 +20,7 @@ The principle of least privilege has been followed to ensure that the account th
 
 ### The Build Pipeline
 
-Although the code is hosted on GitHub and uses GitHub actions to automate the building and deployment, it makes use of very little GitHub actions specific functionality. Instead it uses Batect to define what happens at each step, enabling the developer to validate that it will work locally before pushing the code and waiting to see if it will succeed. It also ensures that the tasks can be run consistently on any machine with very little setup required, removing the concern that arises from "doesn't run on my machine".
+Although the code is hosted on GitHub and uses GitHub actions to automate the building and deployment, it makes use of little GitHub actions specific functionality. Instead it uses Batect to define what happens at each step, enabling the developer to validate that it will work locally before pushing the code and waiting to see if it will succeed. It also ensures that the tasks can be run consistently on any machine with little setup required, removing the concern that arises from "doesn't run on my machine".
 
 To build the application the standard .NET Core SDK base image is defined as a container in Batect, along with volumes to map the code, the nuget cache and the `obj` folder to optimise the performance of subsequent builds by caching intermediate artefacts. A task is also defined that will use that container to build the API.
 
@@ -174,7 +174,7 @@ deploy-infra:
       DB_USERNAME: $DB_USERNAME
 ```
 
-The two GCP accounts, the IAM changes and the enabling of the GCP APIs are declared using the GCP Pulumi library, defined in the `deploy-iam` task. Similar to Terraform, Pulumi maintains the latest state of the deployment, comparing that to the declared state in the latest commit, applying only the changes that were made.
+The two GCP accounts, the IAM changes and the enabling of the GCP APIs are declared using the GCP Pulumi library, defined in the `deploy-iam` task. Like Terraform, Pulumi maintains the latest state of the deployment, comparing that to the declared state in the latest commit, applying only the changes that were made.
 
 ```typescript
 ...
@@ -299,7 +299,7 @@ push-image:
     command: infra/push-image.sh
 ```
 
-After the image is built, it is scanned for vulnerabilities using Trivy and Dockle to ensure that there are no dependencies with known vulnerabilities and that the Dockerfile follows all of the best security practices. One of the vulnerabilities Dockle identified for me was that I forgot to change the running user at the end of the Dockerfile so that the application didn't run as the root user.
+After the image is built, it is scanned for vulnerabilities using Trivy and Dockle to ensure that there are no dependencies with known vulnerabilities and that the Dockerfile follows the best security practices. One of the vulnerabilities Dockle identified for me was that I forgot to change the running user at the end of the Dockerfile so that the application didn't run as the root user.
 
 ```bash
 IMAGE_TAG=gcr.io/"$GOOGLE_PROJECT"/"$APP_NAME":"$GITHUB_SHA"
@@ -346,7 +346,7 @@ deploy:
       ENVIRONMENT: $ENVIRONMENT
 ```
 
-The GCP Cloud Run service is defined to use the container port 8080, as the default port of 80 cannot be bound to by unprivileged users. It is also defined with a dependency on the GCP Cloud SQL Postgres instance, enabling it access it via the Cloud SQL Proxy. It is set to be visible to all users and is therefore public by default, this can be changed to only allow authenticated GCP users if needed.
+The GCP Cloud Run service is defined to use the container port 8080, as the default port of 80 cannot be bound to by unprivileged users. It is also defined with a dependency on the GCP Cloud SQL Postgres instance, enabling it to access it via the Cloud SQL Proxy. It is set to be visible to all users and is therefore public by default, this can be changed to only allow authenticated GCP users if needed.
 
 ```typescript
 const weatherApi = new gcp.cloudrun.Service(appName, {
@@ -501,7 +501,7 @@ private static string GetDatabasePasswordSecret(IConfiguration dbSettings)
 }
 ```
 
-To test the API all application code is covered by unit tests, with higher level integration tests designed to ensure the API functions correctly when it is running. The integration tests utilise the ASP.NET testing library to run the API in an in memory server communicating with a Postgres Docker container to store and retrieve the weather forecasts.
+To test the API all application code is covered by unit tests, with higher level integration tests designed to ensure the API functions correctly when it is running. The integration tests utilise the ASP.NET testing library to run the API in an in-memory server communicating with a Postgres Docker container to store and retrieve the weather forecasts.
 
 ```csharp
 protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -562,7 +562,7 @@ public async Task GetReturnsCorrectWeather()
 
 ## What could come next?
 
-There were a number of other things that I planned to implement that would generally be required to deploy an application to production safely and ensure it continued to run correctly.
+There were several other things that I planned to implement that would generally be required to deploy an application to production safely and ensure it continued to run correctly.
 
 Currently the application is only deployed to a single environment, ideally there should be at least one other environment that it is deployed to, ensuring it works there before deploying to production.
 
@@ -574,11 +574,11 @@ Once the API is deployed automated functional tests can be written to ensure tha
 
 The API allows any user to retrieve and create weather forecasts which is far from ideal and also why I manually turn off the database when I am not using it. The API should authenticate users and then ensure they are authorized to either retrieve or create weather forecasts.
 
-The database should be configured to automatically backup on a regular cadence to enable recovery of the data in the event that data is lost.
+The database should be configured to automatically backup on a regular cadence to enable recovery of the data if data is lost.
 
 The deployment pipeline takes roughly 10 minutes to build, test and deploy the application which can definitely be reduced by a number of optimisations such as; caching third party dependencies between steps and pre-building slim purpose built Docker images for each step.
 
-Although the API code and the Dockerfile currently has security scanning, the bash scripts that are used to automate the various steps don't so a tool such as Shellshock could be used to perform that scanning. The Pulumi TypeScript code also does not have any linting or security scanning.
+Although the API code and the Dockerfile currently has security scanning, the bash scripts that are used to automate the various steps don't, so a tool such as Shellshock could be used to perform that scanning. The Pulumi TypeScript code also does not have any linting or security scanning.
 
 The API request don't currently perform any validation other than what is built into ASP.NET Core and could therefore use a library such as [FluentValidation](https://fluentvalidation.net/) to perform that validation to ensure the requests are as expected.
 
