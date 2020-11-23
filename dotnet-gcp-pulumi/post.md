@@ -2,17 +2,17 @@
 
 ## Motivation
 
-Having never worked with GCP or [Pulumi](), I thought it would be fun to explore the technologies by building a .NET Core API following as many best practices as possible for production ready cloud native services. The intention was to develop an API that implemented every best practice for developing cloud native services and then share what I learnt throughout the process. Rather than wait until I have completed the journey I have decided to share my learnings so far.
+Having never worked with GCP or [Pulumi](https://www.pulumi.com/), I thought it would be fun to explore the technologies by building a .NET Core API following as many best practices as possible for production ready cloud native services. I also wanted to explore more about [Batect](https://batect.dev/), which is a tool that I have used in past projects but have never utilized in a greenfield project. The intention was to develop an API that implemented every best practice I could think of for developing cloud native services and then share what I learnt throughout the process. Rather than wait until I have completed the journey I have decided to share my learnings so far.
 
 ## What is it?
 
 The API is a very simple .NET Core Web API that creates and retrieves weather forecasts. The forecasts are stored in a GCP Cloud SQL Postgres database while the API is deployed as a Docker container running on GCP Cloud Run. It has tests written at every level of the test pyramid relevant to the component, starting at unit tests for the business logic, controllers and repository layer, leading to integration tests that run against a Postgres docker container.
 
-GCP Secret Manager is used to store the database password which is accessed by the .NET Core API and the database schema migration tool. The database schema migrations are applied using [Flyway]() running in a docker container, defined as a task in Batect. They are applied during deployment and every time the integration tests are run to ensure a clean database is available for each test run.
+GCP Secret Manager is used to store the database password which is accessed by the .NET Core API and the database schema migration tool. The database schema migrations are applied using [Flyway](https://flywaydb.org/) running in a docker container, defined as a task in Batect. They are applied during deployment and every time the integration tests are run to ensure a clean database is available for each test run.
 
-The source code is hosted on GitHub using GitHub actions to automatically build and test the application then deploy it and it's infrastructure to GCP using [Pulumi](). It uses [Batect]() to define the tasks that are run during the CI/CD pipeline to enable them to run consistently during local development and in the GitHub actions.
+The source code is hosted on GitHub using GitHub actions to automatically build and test the application then deploy it and it's infrastructure to GCP using Pulumi. It uses Batect to define the tasks that are run during the CI/CD pipeline to enable them to run consistently during local development and in the GitHub actions.
 
-There are a few tools used for static analysis and for security/dependency scanning to ensure the application has no known vulnerabilities. The ASP.NET Core API uses [SonarAnalyzer.CSharp]() and [Microsoft.CodeAnalysis.FxCopAnalyzers]() both of which are static analysis libraries for C# that detect code patterns that introduce security vulnerabilities or other flaws such as memory leaks. [GitHub CodeQL]() is another static analysis tool that is used as a GitHub action. [Dependabot]() is used for scanning the .NET dependencies to ensure they are up to date. [Trivy]() is used to scan the .NET Core Docker image for known vulnerabilities while [Dockle]() is a Dockerfile linter for detecting security flaws.
+There are a few tools used for static analysis and for security/dependency scanning to ensure the application has no known vulnerabilities. The ASP.NET Core API uses [SonarAnalyzer.CSharp](https://www.nuget.org/packages/SonarAnalyzer.CSharp/) and [Microsoft.CodeAnalysis.FxCopAnalyzers](https://www.nuget.org/packages/Microsoft.CodeAnalysis.FxCopAnalyzers/) both of which are static analysis libraries for C# that detect code patterns that introduce security vulnerabilities or other flaws such as memory leaks. [GitHub CodeQL](https://securitylab.github.com/tools/codeql) is another static analysis tool that is used as a GitHub action. [Dependabot](https://dependabot.com/) is used for scanning the .NET dependencies to ensure they are up to date. [Trivy](https://github.com/aquasecurity/trivy) is used to scan the .NET Core Docker image for known vulnerabilities while [Dockle](https://github.com/goodwithtech/dockle) is a Dockerfile linter for detecting security flaws.
 
 The principle of least privilege has been followed to ensure that the account that deploys the infrastructure and the application only has the privileges it requires to perform those tasks.
 
@@ -396,7 +396,7 @@ const iamWeatherApi = new gcp.cloudrun.IamMember(`${appName}-everyone`, {
 
 ### The API
 
-The API consists of a single controller that exposes two simple endpoints, one to create weather forecasts and another to retrieve those forecasts. It uses [MediatR]() to implement a CQRS style architecture where each query and command has separate classes to represent the data transfer objects and the handlers.
+The API consists of a single controller that exposes two simple endpoints, one to create weather forecasts and another to retrieve those forecasts. It uses [MediatR](https://github.com/jbogard/MediatR) to implement a CQRS style architecture where each query and command has separate classes to represent the data transfer objects and the handlers.
 
 ```csharp
 [HttpGet]
@@ -443,7 +443,7 @@ public async Task<GetWeatherForecastResponse> Handle(GetWeatherForecastQuery req
 }
 ```
 
-The `NotFoundException` is mapped to a [problem details]() HTTP 404 error using the .NET library [Hellang.Middleware.ProblemDetails]().
+The `NotFoundException` is mapped to a [problem details](https://tools.ietf.org/html/rfc7807) HTTP 404 error using the .NET library [Hellang.Middleware.ProblemDetails](https://www.nuget.org/packages/Hellang.Middleware.ProblemDetails/).
 
 ```csharp
 services.AddProblemDetails(opts =>
@@ -455,7 +455,7 @@ services.AddProblemDetails(opts =>
 });
 ```
 
-[Entity Framework Core]() is used for data access within the API to read and write data to the Postgres database. While running locally and in integration tests it uses a Postgres Docker container to host the database, while using GCP Cloud SQL when it is running in GCP Cloud Run. GCP Secrets Manager is used to store the database password and is therefore retrieved when the application starts if it is running in Cloud Run.
+Entity Framework Core is used for data access within the API to read and write data to the Postgres database. While running locally and in integration tests it uses a Postgres Docker container to host the database, while using GCP Cloud SQL when it is running in GCP Cloud Run. GCP Secrets Manager is used to store the database password and is therefore retrieved when the application starts if it is running in Cloud Run.
 
 ```csharp
 private static void ConfigureDbContext(IServiceCollection services, IConfiguration configuration)
