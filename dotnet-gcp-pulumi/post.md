@@ -14,8 +14,6 @@ The source code is hosted on GitHub using GitHub actions to automatically build 
 
 There are a few tools used for static analysis and for security/dependency scanning to ensure the application has no known vulnerabilities. The ASP.NET Core API uses [SonarAnalyzer.CSharp](https://www.nuget.org/packages/SonarAnalyzer.CSharp/) and [Microsoft.CodeAnalysis.FxCopAnalyzers](https://www.nuget.org/packages/Microsoft.CodeAnalysis.FxCopAnalyzers/) both of which are static analysis libraries for C# that detect code patterns that introduce security vulnerabilities or other flaws such as memory leaks. [GitHub CodeQL](https://securitylab.github.com/tools/codeql) is another static analysis tool that is used as a GitHub action. [Dependabot](https://dependabot.com/) is used for scanning the .NET dependencies to ensure they are up to date. [Trivy](https://github.com/aquasecurity/trivy) is used to scan the .NET Core Docker image for known vulnerabilities while [Dockle](https://github.com/goodwithtech/dockle) is a Dockerfile linter for detecting security flaws.
 
-The principle of least privilege has been followed to ensure that the account that deploys the infrastructure and the application only has the privileges it requires to perform those tasks.
-
 ## What does it look like?
 
 ### The Build Pipeline
@@ -574,7 +572,7 @@ Once the API is deployed automated functional tests can be written to ensure tha
 
 The API allows any user to retrieve and create weather forecasts which is far from ideal and also why I manually turn off the database when I am not using it. The API should authenticate users and then ensure they are authorized to either retrieve or create weather forecasts.
 
-The database should be configured to automatically backup on a regular cadence to enable recovery of the data if data is lost.
+The database should be configured to automatically backup on a regular cadence to enable recovery of the data if data is lost. There should also be a separate user for deploying schema migrations and for accessing the database via the API to ensure a compromised application does not result in unintended schema changes.
 
 The deployment pipeline takes roughly 10 minutes to build, test and deploy the application which can definitely be reduced by a number of optimisations such as; caching third party dependencies between steps and pre-building slim purpose built Docker images for each step.
 
@@ -582,7 +580,7 @@ Although the API code and the Dockerfile currently has security scanning, the ba
 
 The API request don't currently perform any validation other than what is built into ASP.NET Core and could therefore use a library such as [FluentValidation](https://fluentvalidation.net/) to perform that validation to ensure the requests are as expected.
 
-I am sure there are more ways I could improve this application to make it more suitable for production workloads and I intend to continue to iterate on it, sharing my learnings as I continue down this road.
+I am sure there are more ways I could improve this application to make it more suitable for production workloads and I intend to continue to iterate on it, sharing my learnings as I continue down this road. If anyone reading this post has any ideas to improve this further I am keen to hear them!
 
 ## Try it yourself
 
